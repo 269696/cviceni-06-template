@@ -112,10 +112,25 @@ class KNNClassifier:
         """
         # assert  Ověřte, že model je nafitovan (self.x_train_ není None)
         # assert  Ověřte, že x.shape[1] == self.x_train_.shape[1]
-        raise NotImplementedError(
-            "Úkol: pro kazdy radek x spoctete vzdalenost ke vsem trenovacim bodum "
-            "pres self.distance.calculate, vezmete k nejblizsich a vratte vetsinovy hlas."
-        )
+        assert self.x_train_ is not None, "Model není natrénovaný."
+        assert x.shape[1] == self.x_train_.shape[1], "Nesouhlasí počet příznaků."
+        assert 1 <= self.k <= len(self.y_train_), "Neplatná hodnota k."
+
+        predictions = []
+
+        for sample in x:
+            distances = np.array([
+                self.distance.calculate(sample, train_sample)
+                for train_sample in self.x_train_
+            ])
+
+            nearest_indices = np.argsort(distances, kind="stable")[:self.k]
+            nearest_labels = self.y_train_[nearest_indices]
+
+            labels, counts = np.unique(nearest_labels, return_counts=True)
+            predictions.append(labels[np.argmax(counts)])
+
+        return np.array(predictions, dtype=int)
 
     def save(self, path: str) -> None:
         """Ulozi nauceny model do souboru ``.npz`` (format NumPy).
@@ -143,9 +158,14 @@ class KNNClassifier:
         #   x_train = self.x_train_
         #   y_train = self.y_train_
         #   k       = np.asarray(self.k)
-        raise NotImplementedError(
-            "Úkol: ulozte self.x_train_, self.y_train_ a self.k do .npz souboru "
-            "pres np.savez(path, x_train=..., y_train=..., k=...)."
+        assert self.x_train_ is not None, "Model není natrénovaný."
+        assert self.y_train_ is not None, "Model není natrénovaný."
+
+        np.savez(
+            path,
+            x_train=self.x_train_,
+            y_train=self.y_train_,
+            k=np.asarray(self.k)
         )
 
     # Zamerne NENI @classmethod (na rozdil od PCA.load v cviceni 05): kNN
@@ -173,7 +193,9 @@ class KNNClassifier:
             ``.load(...).predict(...)``.
         """
         # assert  Ověřte, že soubor existuje a je validní .npz soubor
-        raise NotImplementedError(
-            "Úkol: nactete x_train, y_train a k z .npz souboru pres np.load(path) "
-            "a ulozte je do self.x_train_, self.y_train_ a self.k."
-        )
+        with np.load(path) as data:
+            self.x_train_ = data["x_train"].copy()
+            self.y_train_ = data["y_train"].copy()
+            self.k = int(data["k"])
+
+        return self
